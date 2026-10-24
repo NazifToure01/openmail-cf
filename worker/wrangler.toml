@@ -1,0 +1,21 @@
+# Configuration de développement local (`npx wrangler dev` dans ce dossier).
+# Le déploiement est fait par `npm run deploy` à la racine, qui génère worker/wrangler.deploy.json
+# (nom du Worker, espace KV créé automatiquement, URL de l'app, secret INBOX_SECRET).
+name = "openmail-cf-inbox"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
+
+# Fichiers publics (logos utilisés dans les e-mails) : https://<worker>.<compte>.workers.dev/brand/…
+# Servis directement par Cloudflare ; les autres chemins passent par le Worker (protégés par INBOX_SECRET).
+[assets]
+directory = "./public"
+
+# File d'attente des e-mails reçus, vidée par l'application Next.js (id fictif en local)
+[[kv_namespaces]]
+binding = "INBOX"
+id = "local-dev"
+
+[observability]
+enabled = true

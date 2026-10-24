@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+:root {
+  /* Couleurs de la marque : bleu nuit #101C3B, orange #F5A524, blanc cassé #F7F7F5 */
+  --brand-ink: #101c3b;
+  --brand-orange: #f5a524;
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #f1f2f4;
+  --hover: #eceef2;
+  --border: #e4e6eb;
+  --border-strong: #cdd2dc;
+  --text: #101c3b;
+  --muted: #5d6880;
+  --subtle: #8c95a8;
+  --accent: #101c3b;
+  --accent-hover: #1f2f5c;
+  --accent-soft: #e8ebf3;
+  --accent-fg: #ffffff;
+  --danger: #d63b3b;
+  --danger-soft: #fdecec;
+  --success: #188a4c;
+  --success-soft: #e6f6ed;
+  --warning: #b86e00;
+  --warning-soft: #fff4e0;
+  --shadow: 0 1px 2px rgb(16 28 59 / 0.06), 0 12px 32px -8px rgb(16 28 59 / 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-ink: #f7f7f5;
+    --bg: #0b1226;
+    --surface: #111a33;
+    --surface-2: #17213f;
+    --hover: #1d2a4d;
+    --border: #233055;
+    --border-strong: #31416b;
+    --text: #eef0f5;
+    --muted: #9ba5bd;
+    --subtle: #6d7897;
+    --accent: #f5a524;
+    --accent-hover: #f7b850;
+    --accent-soft: #33280f;
+    --accent-fg: #101c3b;
+    --danger: #f06b6b;
+    --danger-soft: #3a1c1f;
+    --success: #4cc584;
+    --success-soft: #14302a;
+    --warning: #f0b14a;
+    --warning-soft: #3a2c12;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-hover: var(--hover);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --shadow-pop: var(--shadow);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-brand: var(--font-manrope), var(--font-geist-sans), sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ---------- Éditeur (Tiptap / ProseMirror) ---------- */
+.mail-content {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.mail-content p { margin: 0 0 0.75em; }
+.mail-content h1 { font-size: 1.6em; font-weight: 650; margin: 0 0 0.5em; line-height: 1.3; }
+.mail-content h2 { font-size: 1.3em; font-weight: 650; margin: 0 0 0.5em; line-height: 1.3; }
+.mail-content h3 { font-size: 1.1em; font-weight: 650; margin: 0 0 0.5em; line-height: 1.3; }
+.mail-content ul { list-style: disc; padding-left: 1.5em; margin: 0 0 0.75em; }
+.mail-content ol { list-style: decimal; padding-left: 1.5em; margin: 0 0 0.75em; }
+.mail-content li p { margin: 0; }
+.mail-content blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 0.9em;
+  color: var(--muted);
+  margin: 0 0 0.75em;
+}
+.mail-content a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.mail-content img { max-width: 100%; height: auto; border-radius: 4px; }
+.mail-content img.ProseMirror-selectednode { outline: 2px solid var(--accent); }
+.mail-content hr { border: 0; border-top: 1px solid var(--border); margin: 1em 0; }
+.mail-content code { font-family: var(--font-mono); font-size: 0.9em; background: var(--surface-2); padding: 0.1em 0.3em; border-radius: 4px; }
+.mail-content pre { background: var(--surface-2); padding: 0.75em 1em; border-radius: 6px; font-family: var(--font-mono); font-size: 0.9em; white-space: pre-wrap; margin: 0 0 0.75em; }
+.mail-content mark { border-radius: 2px; padding: 0 2px; }
+
+.ProseMirror { outline: none; }
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--subtle);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.animate-pop { animation: pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop { animation: none; }
+}

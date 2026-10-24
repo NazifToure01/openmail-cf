@@ -1,0 +1,52 @@
+{
+  "name": "openmail-cf",
+  "version": "0.1.0",
+  "description": "Webmail multi-domaines open source auto-hébergé sur Cloudflare (Email Sending, Email Routing, Workers, D1, R2)",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "db:migrate:local": "wrangler d1 migrations apply openmail-cf --local",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "cf:build": "opennextjs-cloudflare build",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:app": "node scripts/deploy.mjs --app",
+    "deploy:inbox": "node scripts/deploy.mjs --inbox"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.12",
+    "@tiptap/extension-highlight": "^3.32.0",
+    "@tiptap/extension-image": "^3.32.0",
+    "@tiptap/extension-text-align": "^3.32.0",
+    "@tiptap/extension-text-style": "^3.32.0",
+    "@tiptap/extensions": "^3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "lucide-react": "^1.58.0",
+    "next": "16.4.2",
+    "postal-mime": "^4.0.7",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "sanitize-html": "^2.18.1",
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/sanitize-html": "^2.16.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.2",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wrangler": "^4.151.1"
+  }
+}

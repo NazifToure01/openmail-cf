@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Configuration de développement local (`npm run dev`).
+  // Le déploiement n'utilise pas ce fichier tel quel : `npm run deploy` génère wrangler.deploy.jsonc
+  // avec votre compte, vos domaines et vos ressources (voir scripts/deploy.mjs).
+  "name": "openmail-cf",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "openmail-cf" }],
+  // Pièces jointes, e-mails originaux et images des e-mails
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "openmail-cf-files" }],
+  // Base de données (simulée en local ; tables créées par `npm run db:migrate:local`)
+  "d1_databases": [{ "binding": "DB", "database_name": "openmail-cf", "database_id": "local-dev", "migrations_dir": "migrations" }],
+  // Redimensionnement / conversion des images importées
+  "images": { "binding": "IMAGES" },
+  "observability": { "enabled": true }
+}
