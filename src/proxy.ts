@@ -36,10 +36,6 @@ export async function proxy(request: NextRequest) {
     }
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  // Après la connexion, un domaine doit être choisi (sa validité est vérifiée par l'API)
-  if (pathname === "/" && !request.cookies.get("mb_domain")?.value) {
-    return NextResponse.redirect(new URL("/domaine", request.url));
-  }
   return NextResponse.next();
 }
 

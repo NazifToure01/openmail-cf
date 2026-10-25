@@ -1,12 +1,12 @@
 # OpenMail CF
 
-**Webmail multi-domaines open source, auto-hébergé sur Cloudflare.** Envoyez et recevez les e-mails de vos propres domaines depuis une interface web, sans serveur ni base de données externe à administrer : tout tourne sur votre compte Cloudflare (Workers, D1, R2).
+**Webmail open source, auto-hébergé sur Cloudflare.** Envoyez et recevez les e-mails de votre propre domaine depuis une interface web, sans serveur ni base de données externe à administrer : tout tourne sur votre compte Cloudflare (Workers, D1, R2).
 
-> 🇬🇧 *Self-hosted, multi-domain webmail running entirely on Cloudflare (Email Sending, Email Routing, Workers, D1, R2). Clone, fill in `.env` (4 values), run `npm run deploy`. The UI is in French. MIT licensed.*
+> 🇬🇧 *Self-hosted webmail for your own domain, running entirely on Cloudflare (Email Sending, Email Routing, Workers, D1, R2). Clone, fill in `.env` (4 values), run `npm run deploy`. The UI is in French. MIT licensed.*
 
 - ✉️ Envoi via **Cloudflare Email Sending** (pièces jointes, CC/CCI, signatures, éditeur riche, images)
 - 📥 Réception via **Cloudflare Email Routing** → un Email Worker → votre boîte de réception
-- 🌐 Plusieurs domaines et plusieurs adresses par domaine, plusieurs utilisateurs avec droits par domaine
+- 🌐 Un domaine par instance, autant d'adresses que vous voulez (`contact@`, `support@`…), plusieurs utilisateurs avec droits par adresse
 - 📊 Suivi de remise (Délivré / Rejeté) via les journaux d'envoi Cloudflare
 - 🎨 Nom et logo de votre instance (favicon compris) choisis à l'installation, modifiables ensuite
 - 🚀 Déploiement en **une commande**
@@ -83,7 +83,7 @@ Les 4 variables obligatoires dans `.env` :
 
 ```ini
 CLOUDFLARE_API_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   # voir « Créer le token Cloudflare »
-MAIL_DOMAIN=example.com                                  # ou example.com,example.org
+MAIL_DOMAIN=example.com                                  # un seul domaine par instance
 APP_PASSWORD=un-mot-de-passe-d-installation-long         # 10 caractères minimum
 SESSION_SECRET=<résultat de : openssl rand -hex 32>
 ```
@@ -109,7 +109,7 @@ Un seul token suffit pour déployer **et** faire fonctionner l'application.
 3. Nom : `OpenMail CF`.
 4. Ajoutez les permissions du tableau ci-dessous.
 5. **Account Resources** : *Include* → votre compte.
-   **Zone Resources** : *Include* → *Specific zone* → chacun de vos domaines de `MAIL_DOMAIN` (ou *All zones* si vous préférez).
+   **Zone Resources** : *Include* → *Specific zone* → le domaine de `MAIL_DOMAIN` (ou *All zones* si vous préférez).
 6. *(Facultatif)* **Client IP Address Filtering** : rien à mettre (les Workers n'ont pas d'IP fixe).
 7. **Continue to summary → Create Token**, puis copiez la valeur dans `CLOUDFLARE_API_TOKEN`. Elle ne sera plus affichée.
 
@@ -124,7 +124,7 @@ Un seul token suffit pour déployer **et** faire fonctionner l'application.
 | Account | **Email Sending** | Edit | Envoyer les e-mails (API Email Sending) |
 | Account | **Account Analytics** | Read | Afficher le statut final des envois (Délivré / Rejeté) |
 | Account | **Account Settings** | Read | Lire les informations du compte pendant le déploiement |
-| Zone | **Zone** | Read | Retrouver l'ID de zone de chaque domaine, détecter les domaines d'envoi |
+| Zone | **Zone** | Read | Retrouver l'ID de zone du domaine pendant le déploiement |
 | Zone | **Workers Routes** | Edit | Brancher l'app sur `mail.example.com` (domaine personnalisé + DNS + certificat) |
 | Zone | **Email Routing Rules** | Edit | Créer la règle de réception quand vous ajoutez une adresse dans l'app |
 
@@ -140,7 +140,6 @@ Le token est stocké comme secret dans le Worker de l'app, car l'app en a besoin
 |---|---|---|
 | Account | Email Sending | Edit |
 | Account | Account Analytics | Read |
-| Zone | Zone | Read |
 | Zone | Email Routing Rules | Edit |
 
 `CLOUDFLARE_API_TOKEN` ne sert alors qu'à `npm run deploy` (sur votre machine ou votre CI) ; seul `CLOUDFLARE_RUNTIME_TOKEN` est envoyé à Cloudflare comme secret de l'app.
@@ -155,8 +154,8 @@ Toutes se placent dans `.env` (jamais versionné). Voir `.env.example` pour le m
 | `MAIL_DOMAIN` | ✅ | Domaine(s) d'envoi/réception, séparés par des virgules |
 | `APP_PASSWORD` | ✅ | Mot de passe d'installation (création du premier admin) |
 | `SESSION_SECRET` | ✅ | Clé HMAC des sessions, 32+ caractères (`openssl rand -hex 32`) |
-| `APP_HOSTNAME` | | Adresse de l'app. Défaut : `mail.<premier domaine>` |
-| `PROJECT_NAME` | | Préfixe des Workers / base D1 / bucket / KV. Défaut : `openmail-cf` |
+| `APP_HOSTNAME` | | Adresse de l'app. Défaut : `mail.<MAIL_DOMAIN>` |
+| `PROJECT_NAME` | | Préfixe des Workers / base D1 / bucket / KV. Défaut : `openmail-cf`. Changez-le pour déployer une instance par domaine sur le même compte |
 | `CLOUDFLARE_ACCOUNT_ID` | | Seulement si le token donne accès à plusieurs comptes |
 | `CLOUDFLARE_RUNTIME_TOKEN` | | Token restreint utilisé par l'app en production |
 | `CLOUDFLARE_ANALYTICS_TOKEN` | | Token séparé pour le suivi de remise |
@@ -170,7 +169,7 @@ Toutes se placent dans `.env` (jamais versionné). Voir `.env.example` pour le m
 Le script [`scripts/deploy.mjs`](scripts/deploy.mjs) est **idempotent** : relancez-le autant de fois que nécessaire.
 
 1. **Vérifie** `.env` (variables présentes, `SESSION_SECRET` assez long, `APP_PASSWORD` assez fort).
-2. **Retrouve** votre compte, l'ID de zone de chaque domaine et votre sous-domaine `workers.dev` ; signale si Email Sending ou Email Routing ne sont pas activés.
+2. **Retrouve** votre compte, l'ID de zone du domaine et votre sous-domaine `workers.dev` ; signale si Email Sending ou Email Routing ne sont pas activés.
 3. **Crée si besoin** l'espace KV `openmail-cf-inbox`, le bucket R2 `openmail-cf-files` et la base D1 `openmail-cf`, puis **applique les migrations** SQL du dossier [`migrations/`](migrations/) qui ne l'ont pas encore été.
 4. **Génère** `INBOX_SECRET` (secret partagé entre l'app et le Worker de réception), conservé dans `.deploy/state.json`.
 5. **Déploie le Worker de réception** `openmail-cf-inbox` (dossier `worker/`).
@@ -204,7 +203,7 @@ npm run db:migrate:local # crée les tables dans la base D1 locale (.wrangler/st
 npm run dev              # http://localhost:3000
 ```
 
-En local, l'app lit directement `.env` et utilise une base D1 simulée (aucune donnée de production). Pour tester la réception, renseignez aussi `INBOX_WORKER_URL` et `INBOX_SECRET` (valeur dans `.deploy/state.json`) et, pour les règles de réception, `MAIL_DOMAINS=example.com=<zone id>`. Les bindings D1, R2 et Images sont simulés localement grâce à `wrangler.jsonc`.
+En local, l'app lit directement `.env` et utilise une base D1 simulée (aucune donnée de production). Pour tester la réception, renseignez aussi `INBOX_WORKER_URL` et `INBOX_SECRET` (valeur dans `.deploy/state.json`) et, pour les règles de réception, `CLOUDFLARE_ZONE_ID`. Les bindings D1, R2 et Images sont simulés localement grâce à `wrangler.jsonc`.
 
 Worker de réception en local :
 

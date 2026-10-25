@@ -10,7 +10,7 @@ export type { RoutingInfo, RoutingStatus } from "./types";
  *
  * Token : permission « Zone → Email Routing Rules → Edit » sur le domaine, dans
  * CLOUDFLARE_ROUTING_TOKEN (ou CLOUDFLARE_API_TOKEN s'il a déjà cette permission).
- * L'id de zone de chaque domaine vient de MAIL_DOMAINS (domaine=zone) ou de la découverte automatique.
+ * L'id de zone du domaine vient de CLOUDFLARE_ZONE_ID (renseigné par `npm run deploy`).
  */
 
 type Rule = {

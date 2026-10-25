@@ -32,7 +32,7 @@ export default function LoginPage() {
     if (res?.ok) {
       // Rechargement complet volontaire (cookie de session)
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/domaine";
+      window.location.href = "/";
       return;
     }
     const data = (await res?.json().catch(() => ({}))) as { error?: string } | undefined;
@@ -41,7 +41,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthCard title="Connexion" subtitle="Connectez-vous pour envoyer et recevoir les e-mails de vos domaines." onSubmit={submit}>
+    <AuthCard title="Connexion" subtitle="Connectez-vous pour envoyer et recevoir vos e-mails." onSubmit={submit}>
       <AuthField label="E-mail" type="email" autoComplete="username" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
       <AuthField label="Mot de passe" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       {error && <p className="mb-1 text-[13px] text-danger">{error}</p>}

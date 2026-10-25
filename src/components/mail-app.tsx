@@ -486,10 +486,7 @@ function Mailbox() {
         <AppIcon className="h-9 w-9 shrink-0" />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate font-brand text-[17px] font-extrabold tracking-[-0.04em]">{branding.name}</div>
-          <a href="/domaine" className="group flex items-center gap-1 text-xs text-muted hover:text-fg" title="Changer de domaine">
-            <span className="truncate">@{domain}</span>
-            <ChevronDown size={12} className="shrink-0 opacity-60 group-hover:opacity-100" />
-          </a>
+          <div className="truncate text-xs text-muted">@{domain}</div>
         </div>
       </div>
       <button

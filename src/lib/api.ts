@@ -22,12 +22,6 @@ export async function api<T>(url: string, init: RequestInit & { json?: unknown }
     throw new ApiError(401, "Session expirée");
   }
   const data = await res.json().catch(() => ({}));
-  if (res.status === 409 && (data as { code?: string }).code === "domain_required") {
-    // Rechargement complet volontaire vers le choix du domaine
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = "/domaine";
-    throw new ApiError(409, "Choisissez un domaine");
-  }
   if (!res.ok) throw new ApiError(res.status, (data as { error?: string }).error || `Erreur ${res.status}`, data);
   return data as T;
 }

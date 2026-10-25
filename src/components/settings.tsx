@@ -174,8 +174,8 @@ function Identities({
       />
       {routing && !routing.configured && (
         <div className="mb-4 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-[13px] text-warning">
-          <b>Réception automatique non configurée pour {domain}.</b> Ajoutez <code>CLOUDFLARE_ROUTING_TOKEN</code> (permission « Email
-          Routing Rules : Edit ») et l&apos;id de zone du domaine dans <code>MAIL_DOMAINS</code> (<code>{domain}=&lt;zone id&gt;</code>) :
+          <b>Réception automatique non configurée pour {domain}.</b> Le token de l&apos;app doit avoir la permission « Email
+          Routing Rules : Edit » et <code>CLOUDFLARE_ZONE_ID</code> doit être défini (relancez <code>npm run deploy</code>) :
           les adresses ajoutées ici recevront alors leurs e-mails dans l&apos;app.
         </div>
       )}

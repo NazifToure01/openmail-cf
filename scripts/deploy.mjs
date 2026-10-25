@@ -3,7 +3,7 @@
  * Déploiement complet d'OpenMail CF sur Cloudflare, à partir du seul fichier .env :
  *
  *  1. vérifie la configuration et le token Cloudflare ;
- *  2. retrouve le compte, les zones des domaines et le sous-domaine workers.dev ;
+ *  2. retrouve le compte, la zone du domaine et le sous-domaine workers.dev ;
  *  3. crée si besoin l'espace KV (réception), le bucket R2 (pièces jointes) et la base D1,
  *     puis applique les migrations SQL du dossier migrations/ ;
  *  4. déploie le Worker de réception (dossier worker/) avec son secret INBOX_SECRET ;
@@ -60,7 +60,7 @@ const env = process.env;
 
 const required = {
   CLOUDFLARE_API_TOKEN: "token API Cloudflare (voir README, section « Créer le token »)",
-  MAIL_DOMAIN: "domaine(s) d'envoi, ex. example.com ou example.com,example.org",
+  MAIL_DOMAIN: "domaine de l'instance, ex. example.com",
   APP_PASSWORD: "mot de passe d'installation, demandé pour créer le premier compte",
   SESSION_SECRET: "clé de signature des sessions : openssl rand -hex 32",
 };
@@ -78,21 +78,22 @@ function readConfig() {
     fail("APP_PASSWORD est trop faible : choisissez au moins 10 caractères (il protège la création du compte admin)");
   }
 
-  const domains = env.MAIL_DOMAIN.split(",")
-    .map((d) => d.trim().toLowerCase())
-    .filter(Boolean);
+  const domain = env.MAIL_DOMAIN.trim().toLowerCase();
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) {
+    fail("MAIL_DOMAIN : un seul domaine, ex. example.com (pour un autre domaine, déployez une autre instance avec un PROJECT_NAME différent)");
+  }
   const project = (env.PROJECT_NAME || "openmail-cf").trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9-]{0,40}[a-z0-9]$/.test(project)) fail("PROJECT_NAME : lettres minuscules, chiffres et tirets uniquement");
 
   return {
     token: env.CLOUDFLARE_API_TOKEN.trim(),
-    domains,
+    domain,
     project,
     appName: project,
     inboxName: `${project}-inbox`,
     bucket: `${project}-files`,
     kvTitle: `${project}-inbox`,
-    hostname: (env.APP_HOSTNAME || `mail.${domains[0]}`).trim().toLowerCase(),
+    hostname: (env.APP_HOSTNAME || `mail.${domain}`).trim().toLowerCase(),
     database: project,
     forwardTo: env.FORWARD_TO?.trim() || "",
     catchAll: /^(1|true|yes|oui)$/i.test(env.CATCH_ALL ?? ""),
@@ -284,16 +285,12 @@ async function main() {
   console.log(bold("OpenMail CF — déploiement sur Cloudflare"));
   config = readConfig();
 
-  step("Compte et domaines");
+  step("Compte et domaine");
   const accountId = await findAccount();
   ok(`Compte ${accountId}`);
-  const zones = [];
-  for (const domain of config.domains) {
-    const zoneId = await findZone(accountId, domain);
-    zones.push({ domain, zoneId });
-    ok(`${domain} → zone ${zoneId}`);
-    await checkEmailServices(domain, zoneId);
-  }
+  const zoneId = await findZone(accountId, config.domain);
+  ok(`${config.domain} → zone ${zoneId}`);
+  await checkEmailServices(config.domain, zoneId);
   const subdomain = await workersSubdomain(accountId);
   const inboxUrl = `https://${config.inboxName}.${subdomain}.workers.dev`;
   const appUrl = `https://${config.hostname}`;
@@ -329,7 +326,7 @@ async function main() {
       run("npx", ["wrangler", "deploy", "--config", "worker/wrangler.deploy.json", "--secrets-file", file], wranglerEnv),
     );
     ok(`${config.inboxName} déployé`);
-    if (config.catchAll) for (const z of zones) await ensureCatchAll(z.zoneId, z.domain);
+    if (config.catchAll) await ensureCatchAll(zoneId, config.domain);
   }
 
   if (!onlyInbox) {
@@ -354,8 +351,8 @@ async function main() {
       routes: [{ pattern: config.hostname, custom_domain: true }],
       vars: {
         PUBLIC_APP_URL: appUrl,
-        MAIL_DOMAIN: config.domains[0],
-        MAIL_DOMAINS: zones.map((z) => `${z.domain}=${z.zoneId}`).join(","),
+        MAIL_DOMAIN: config.domain,
+        CLOUDFLARE_ZONE_ID: zoneId,
         CLOUDFLARE_ACCOUNT_ID: accountId,
         INBOX_WORKER_URL: inboxUrl,
         INBOX_WORKER_NAME: config.inboxName,
@@ -394,7 +391,7 @@ async function main() {
   if (!onlyInbox) {
     console.log(`\n  1. Ouvrez ${bold(`${appUrl}/setup`)} (le certificat peut prendre quelques minutes la première fois).`);
     console.log(`  2. Saisissez APP_PASSWORD puis créez le compte administrateur.`);
-    console.log(`  3. Réglages → Adresses : ajoutez vos adresses (ex. contact@${config.domains[0]}) ; la règle de réception est créée automatiquement.`);
+    console.log(`  3. Réglages → Adresses : ajoutez vos adresses (ex. contact@${config.domain}) ; la règle de réception est créée automatiquement.`);
   }
   if (warnings.length) {
     console.log(`\n${yellow(bold("À vérifier :"))}`);
