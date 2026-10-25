@@ -67,7 +67,7 @@ La base de données (**Cloudflare D1**) est créée automatiquement par le dépl
 
 ```bash
 # 1. Cloner et installer
-git clone https://github.com/<vous>/openmail-cf.git
+git clone https://github.com/NazifToure01/openmail-cf.git
 cd openmail-cf
 npm install
 
