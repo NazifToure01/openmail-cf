@@ -1,13 +1,8 @@
 import { readAttachment } from "@/lib/attachments";
-import { HttpError, publicHandler } from "@/lib/server";
-import { authenticate } from "@/lib/session";
+import { HttpError, handler } from "@/lib/server";
 
-/**
- * Pièce jointe. Authentification par session, ou par « ?access_token= » : les WebView de l'app
- * mobile ne peuvent pas ajouter d'en-tête aux images intégrées d'un e-mail.
- */
-export const GET = publicHandler(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
-  await authenticate(new URL(request.url).searchParams.get("access_token") ?? undefined);
+/** Pièce jointe (ou image intégrée d'un e-mail reçu), réservée aux utilisateurs connectés */
+export const GET = handler(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   if (!/^[a-f0-9-]{36}$/.test(id)) throw new HttpError(400, "Identifiant invalide");
   const found = await readAttachment(id);

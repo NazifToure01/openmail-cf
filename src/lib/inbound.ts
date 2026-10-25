@@ -2,7 +2,6 @@ import "server-only";
 import PostalMime from "postal-mime";
 import sanitizeHtml from "sanitize-html";
 import { storeAttachment } from "./attachments";
-import { notifyNewMessages } from "./push";
 import { DuplicateError } from "./db";
 import { messages } from "./store";
 import { escapeHtml, htmlToText } from "./email-html";
@@ -60,8 +59,6 @@ async function runSync(): Promise<number> {
     }
     if (!more || pending.length === 0) break;
   }
-  // Notifications push pour les nouveaux messages (une erreur ne doit pas bloquer l'import)
-  await notifyNewMessages(imported).catch((err) => console.error("Notifications push impossibles", err));
   return imported.length;
 }
 

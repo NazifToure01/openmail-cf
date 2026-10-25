@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { APP_NAME } from "@/lib/brand";
+import { DEFAULT_BRANDING, brandIconUrl, type Branding } from "@/lib/brand";
 import { cn } from "./ui";
 
 /** URL publique des logos (ex. https://openmail-cf-inbox.….workers.dev/brand), null si non configurée */
@@ -9,8 +9,18 @@ const BrandAssetsContext = createContext<string | null>(null);
 export const BrandAssetsProvider = BrandAssetsContext.Provider;
 export const useBrandAssetsUrl = () => useContext(BrandAssetsContext);
 
-/** Icône de l'app : enveloppe au rabat arrondi, point orange de notification */
-export function AppIcon({ className }: { className?: string }) {
+/** Nom et logo de l'instance (lus par le layout racine) */
+const BrandingContext = createContext<Branding>(DEFAULT_BRANDING);
+export const BrandingProvider = BrandingContext.Provider;
+export const useBranding = () => useContext(BrandingContext);
+
+/** Icône de l'app : logo personnalisé, sinon enveloppe au rabat arrondi avec point orange */
+export function AppIcon({ className, custom = true }: { className?: string; custom?: boolean }) {
+  const branding = useBranding();
+  if (custom && branding.logoVersion) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={brandIconUrl(branding)} alt="" className={cn("rounded-[22%] object-contain", className)} />;
+  }
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden>
       <rect width="64" height="64" rx="14" fill="#101C3B" />
@@ -21,13 +31,14 @@ export function AppIcon({ className }: { className?: string }) {
   );
 }
 
-/** Logo de l'app : icône + nom en Manrope ExtraBold */
+/** Logo de l'app : icône + nom de l'instance en Manrope ExtraBold */
 export function AppLogo({ className }: { className?: string }) {
+  const { name } = useBranding();
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <AppIcon className="h-[1.3em] w-[1.3em]" />
       <span className="font-brand font-extrabold tracking-[-0.04em]" style={{ color: "var(--brand-ink)" }}>
-        {APP_NAME}
+        {name}
       </span>
     </span>
   );

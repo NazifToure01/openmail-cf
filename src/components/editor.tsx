@@ -33,8 +33,8 @@ import {
   Unlink,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { APP_NAME, BRAND_ASSETS } from "@/lib/brand";
-import { AppIcon, useBrandAssetsUrl } from "./brand";
+import { BRAND_ASSETS, brandIconUrl } from "@/lib/brand";
+import { AppIcon, useBrandAssetsUrl, useBranding } from "./brand";
 import { api, uploadImage } from "@/lib/api";
 import type { LibraryImage } from "@/lib/types";
 import { Button, Field, IconButton, Modal, cn, inputClass, useToast } from "./ui";
@@ -154,6 +154,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   const [imageOpen, setImageOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
   const brandUrl = useBrandAssetsUrl();
+  const { logoVersion } = useBranding();
   const [palette, setPalette] = useState<"text" | "bg" | null>(null);
 
   const s = useEditorState({
@@ -265,7 +266,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         <IconButton label="Insérer une image" onClick={() => setImageOpen(true)}>
           <ImagePlus size={16} />
         </IconButton>
-        {brandUrl && (
+        {(brandUrl || logoVersion) && (
           <IconButton label="Insérer un logo" onClick={() => setBrandOpen(true)}>
             <AppIcon className="h-4 w-4" />
           </IconButton>
@@ -637,16 +638,24 @@ function ImageDialog({ editor, onClose }: { editor: Editor; onClose: () => void 
 /** Insère un logo hébergé publiquement (seul moyen fiable d'afficher une image dans Gmail / Outlook) */
 function BrandDialog({ editor, onClose }: { editor: Editor; onClose: () => void }) {
   const base = useBrandAssetsUrl();
-  const [file, setFile] = useState<string>(BRAND_ASSETS[0].file);
-  const asset = BRAND_ASSETS.find((a) => a.file === file)!;
-  const [width, setWidth] = useState<string>(String(asset.width));
+  const branding = useBranding();
+  // Logo de l'instance (servi par l'app), puis logos du Worker de réception
+  const assets = [
+    ...(branding.logoVersion
+      ? [{ src: `${window.location.origin}${brandIconUrl(branding)}`, label: "Logo de l'instance", hint: "Choisi dans Réglages", width: 64, preview: "light" }]
+      : []),
+    ...(base ? BRAND_ASSETS.map((a) => ({ ...a, src: `${base}/${a.file}` })) : []),
+  ];
+  const [src, setSrc] = useState<string | undefined>(assets[0]?.src);
+  const asset = assets.find((a) => a.src === src);
+  const [width, setWidth] = useState<string>(String(asset?.width ?? 160));
 
   const insert = () => {
-    if (!base) return;
+    if (!asset) return;
     editor
       .chain()
       .focus()
-      .setImage({ src: `${base}/${file}`, alt: APP_NAME, width: Number(width) || asset.width })
+      .setImage({ src: asset.src, alt: branding.name, width: Number(width) || asset.width })
       .run();
     onClose();
   };
@@ -660,13 +669,13 @@ function BrandDialog({ editor, onClose }: { editor: Editor; onClose: () => void 
       footer={
         <>
           <Button onClick={onClose}>Annuler</Button>
-          <Button variant="primary" onClick={insert} disabled={!base}>
+          <Button variant="primary" onClick={insert} disabled={!asset}>
             Insérer
           </Button>
         </>
       }
     >
-      {!base ? (
+      {!assets.length ? (
         <p className="text-sm text-muted">
           Les logos doivent être accessibles depuis Internet pour s&apos;afficher chez vos destinataires. Renseignez{" "}
           <code>INBOX_WORKER_URL</code> (ou <code>BRAND_ASSETS_URL</code>), puis relancez <code>npm run deploy</code>.
@@ -674,22 +683,22 @@ function BrandDialog({ editor, onClose }: { editor: Editor; onClose: () => void 
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {BRAND_ASSETS.map((a) => (
+            {assets.map((a) => (
               <button
-                key={a.file}
+                key={a.src}
                 type="button"
                 onClick={() => {
-                  setFile(a.file);
+                  setSrc(a.src);
                   setWidth(String(a.width));
                 }}
                 className={cn(
                   "flex flex-col overflow-hidden rounded-xl border text-left transition-colors",
-                  a.file === file ? "border-accent ring-2 ring-accent/25" : "border-line hover:border-line-strong",
+                  a.src === src ? "border-accent ring-2 ring-accent/25" : "border-line hover:border-line-strong",
                 )}
               >
                 <span className={cn("flex h-20 items-center justify-center p-3", a.preview === "dark" ? "bg-[#101C3B]" : "bg-white")}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`${base}/${a.file}`} alt="" className="max-h-full max-w-full object-contain" />
+                  <img src={a.src} alt="" className="max-h-full max-w-full object-contain" />
                 </span>
                 <span className="border-t border-line px-2.5 py-2">
                   <span className="block text-[13px] font-medium">{a.label}</span>

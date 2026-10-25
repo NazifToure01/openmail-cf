@@ -42,3 +42,5 @@ export async function deleteFiles(keys: string[]) {
 
 export const attachmentKey = (id: string) => `attachments/${id}`;
 export const imageKey = (name: string) => `images/${name}`;
+/** Logo de l'instance : icon.png (512 px) et apple-icon.png (180 px, fond blanc) */
+export const brandKey = (file: "icon.png" | "apple-icon.png") => `brand/${file}`;

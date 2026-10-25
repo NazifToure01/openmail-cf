@@ -1,6 +1,6 @@
 # OpenMail CF
 
-**Webmail multi-domaines open source, auto-hébergé sur Cloudflare.** Envoyez et recevez les e-mails de vos propres domaines depuis une interface web (et une app mobile), sans serveur ni base de données externe à administrer : tout tourne sur votre compte Cloudflare (Workers, D1, R2).
+**Webmail multi-domaines open source, auto-hébergé sur Cloudflare.** Envoyez et recevez les e-mails de vos propres domaines depuis une interface web, sans serveur ni base de données externe à administrer : tout tourne sur votre compte Cloudflare (Workers, D1, R2).
 
 > 🇬🇧 *Self-hosted, multi-domain webmail running entirely on Cloudflare (Email Sending, Email Routing, Workers, D1, R2). Clone, fill in `.env` (4 values), run `npm run deploy`. The UI is in French. MIT licensed.*
 
@@ -8,7 +8,7 @@
 - 📥 Réception via **Cloudflare Email Routing** → un Email Worker → votre boîte de réception
 - 🌐 Plusieurs domaines et plusieurs adresses par domaine, plusieurs utilisateurs avec droits par domaine
 - 📊 Suivi de remise (Délivré / Rejeté) via les journaux d'envoi Cloudflare
-- 📱 App mobile iOS / Android (Expo) avec notifications push, dans `mobileApp/`
+- 🎨 Nom et logo de votre instance (favicon compris) choisis à l'installation, modifiables ensuite
 - 🚀 Déploiement en **une commande**
 
 ---
@@ -23,11 +23,10 @@
 6. [Ce que fait `npm run deploy`](#ce-que-fait-npm-run-deploy)
 7. [Mises à jour](#mises-à-jour)
 8. [Développement local](#développement-local)
-9. [App mobile](#app-mobile)
-10. [Personnalisation](#personnalisation)
-11. [Sécurité](#sécurité)
-12. [Dépannage](#dépannage)
-13. [Licence](#licence)
+9. [Personnalisation](#personnalisation)
+10. [Sécurité](#sécurité)
+11. [Dépannage](#dépannage)
+12. [Licence](#licence)
 
 ---
 
@@ -36,7 +35,7 @@
 ```
                  ┌─────────────────────────── Votre compte Cloudflare ───────────────────────────┐
  Navigateur  ───►│  Worker « openmail-cf »  (Next.js via OpenNext)   https://mail.example.com    │
- App mobile      │     │  ├─ D1 « openmail-cf »        utilisateurs, messages, adresses, signatures│
+                 │     │  ├─ D1 « openmail-cf »        utilisateurs, messages, adresses, signatures│
                  │     │  ├─ R2 « openmail-cf-files »  pièces jointes, e-mails originaux, images  │
                  │     │  ├─ Images binding            redimensionnement des images              │
                  │     │  └─ API Email Sending         envoi des e-mails ──────────────► Internet  │
@@ -92,7 +91,7 @@ SESSION_SECRET=<résultat de : openssl rand -hex 32>
 À la fin du déploiement :
 
 1. Ouvrez **`https://mail.example.com/setup`** (le certificat HTTPS peut prendre quelques minutes la toute première fois).
-2. Saisissez `APP_PASSWORD`, puis créez le **compte administrateur** (e-mail + mot de passe personnel).
+2. Saisissez `APP_PASSWORD`, puis créez le **compte administrateur** (e-mail + mot de passe personnel). Vous pouvez aussi y choisir le **nom de votre instance** et son **logo** (utilisé comme favicon).
 3. Dans **Réglages → Adresses**, ajoutez vos adresses (`contact@example.com`, …). La règle Email Routing qui envoie ces adresses vers votre boîte de réception est **créée automatiquement**.
 4. Écrivez votre premier e-mail. 🎉
 
@@ -158,7 +157,6 @@ Toutes se placent dans `.env` (jamais versionné). Voir `.env.example` pour le m
 | `SESSION_SECRET` | ✅ | Clé HMAC des sessions, 32+ caractères (`openssl rand -hex 32`) |
 | `APP_HOSTNAME` | | Adresse de l'app. Défaut : `mail.<premier domaine>` |
 | `PROJECT_NAME` | | Préfixe des Workers / base D1 / bucket / KV. Défaut : `openmail-cf` |
-| `NEXT_PUBLIC_APP_NAME` | | Nom affiché. Défaut : `OpenMail CF` |
 | `CLOUDFLARE_ACCOUNT_ID` | | Seulement si le token donne accès à plusieurs comptes |
 | `CLOUDFLARE_RUNTIME_TOKEN` | | Token restreint utilisé par l'app en production |
 | `CLOUDFLARE_ANALYTICS_TOKEN` | | Token séparé pour le suivi de remise |
@@ -166,7 +164,6 @@ Toutes se placent dans `.env` (jamais versionné). Voir `.env.example` pour le m
 | `CATCH_ALL` | | `true` : toutes les adresses inconnues du domaine arrivent dans l'app |
 | `FORWARD_TO` | | Copie de chaque e-mail reçu vers cette adresse (à vérifier dans Email Routing → *Destination addresses*) |
 | `BRAND_ASSETS_URL` | | URL publique des logos insérables dans les e-mails |
-| `EXPO_ACCESS_TOKEN` | | Token Expo pour les notifications push de l'app mobile |
 
 ## Ce que fait `npm run deploy`
 
@@ -215,37 +212,18 @@ Worker de réception en local :
 cd worker && npm install && npx wrangler dev
 ```
 
-## App mobile
-
-L'app Expo se trouve dans [`mobileApp/`](mobileApp/).
-
-```bash
-cd mobileApp
-npm install
-echo "EXPO_PUBLIC_API_URL=https://mail.example.com" > .env
-npx expo start
-```
-
-Pour publier votre propre build :
-
-1. Remplacez `bundleIdentifier` / `package` (`com.example.openmailcf`) dans `app.json` par les vôtres.
-2. `npx eas-cli@latest init` (crée votre projet EAS et ajoute son `projectId`, nécessaire aux notifications push).
-3. Définissez `EXPO_PUBLIC_API_URL` dans les variables d'environnement EAS, puis `npx eas-cli@latest build`.
-4. Pour les notifications, créez un token Expo et mettez-le dans `EXPO_ACCESS_TOKEN` côté serveur, puis redéployez.
-
 ## Personnalisation
 
-- **Nom** : `NEXT_PUBLIC_APP_NAME` (web) et `name` dans `mobileApp/app.json`.
+- **Nom et logo de l'instance** : choisis lors de l'installation (`/setup`), puis modifiables par un administrateur dans **Réglages → Apparence**, sans redéployer. Le logo (PNG, JPEG ou WebP, idéalement carré 512 × 512 px) est redimensionné par le binding Images et stocké dans R2 ; il sert de favicon, d'icône d'écran d'accueil (iOS / Android), de logo des pages de connexion et de l'en-tête, et peut être inséré dans les e-mails depuis l'éditeur. Sans logo personnalisé, l'icône par défaut (`public/default-icon.svg`, `public/default-apple-icon.png`) est utilisée.
 - **Logos insérables dans les e-mails** : remplacez les PNG de `worker/public/brand/` (`logo.png`, `logo-dark.png`, `symbol.png`, `icon.png`) en gardant les mêmes noms, puis `npm run deploy:inbox`.
-- **Icônes** : `src/app/icon.svg`, `src/app/apple-icon.png` et `mobileApp/assets/images/`.
-- **Couleurs** : variables CSS dans `src/app/globals.css` et `mobileApp/src/components/theme.ts`.
+- **Couleurs** : variables CSS dans `src/app/globals.css`.
 
 ## Sécurité
 
 - `.env`, `.deploy/` et les configurations générées sont exclus de git. **Ne publiez jamais votre `.env`.**
 - Les secrets sont transmis à Cloudflare via un fichier temporaire (`--secrets-file`) supprimé aussitôt ; le script vide aussi le fichier `.open-next/cloudflare/next-env.mjs` où OpenNext recopierait sinon le contenu de `.env`.
 - Mots de passe hachés en PBKDF2-SHA256, sessions signées HMAC-SHA256 (révocables par utilisateur).
-- L'API du Worker de réception est protégée par `INBOX_SECRET` (comparaison en temps constant) ; seules les images des e-mails et les logos sont publics.
+- L'API du Worker de réception est protégée par `INBOX_SECRET` (comparaison en temps constant) ; seules les images des e-mails et les logos sont publics (le logo de l'instance est servi publiquement sur `/brand/icon.png`).
 - Utilisez de préférence un [token d'exécution restreint](#recommandé--séparer-le-token-de-déploiement-et-le-token-dexécution).
 - Pour signaler une faille, ouvrez une *security advisory* privée sur le dépôt GitHub plutôt qu'une issue publique.
 

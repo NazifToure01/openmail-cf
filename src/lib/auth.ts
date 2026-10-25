@@ -3,7 +3,7 @@
  *
  * Jeton : base64url({ uid, v, exp }) + "." + HMAC-SHA256(SESSION_SECRET)
  * - web : cookie httpOnly « mb_session »
- * - mobile : en-tête « Authorization: Bearer <jeton> »
+ * - clients API : en-tête « Authorization: Bearer <jeton> »
  * `v` (tokenVersion de l'utilisateur) permet de révoquer toutes ses sessions.
  */
 
@@ -45,7 +45,7 @@ export async function verifySessionToken(token: string | undefined | null): Prom
   }
 }
 
-/** Jeton depuis l'en-tête Authorization (mobile) ou le cookie (web) */
+/** Jeton depuis l'en-tête Authorization (clients API) ou le cookie (web) */
 export function tokenFromRequest(headers: Headers, cookie: string | undefined): string | undefined {
   const auth = headers.get("authorization");
   if (auth?.startsWith("Bearer ")) return auth.slice(7).trim();

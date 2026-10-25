@@ -6,7 +6,7 @@ const digest = (v: string) => createHash("sha256").update(v).digest();
 
 /**
  * Appelé par le Worker de réception dès qu'un e-mail est stocké : l'app l'importe aussitôt
- * et envoie les notifications push. Authentifié par INBOX_SECRET.
+ * Authentifié par INBOX_SECRET.
  */
 export const POST = publicHandler(async (request: Request) => {
   const secret = process.env.INBOX_SECRET;

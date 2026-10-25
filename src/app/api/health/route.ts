@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { database } from "@/lib/db";
 
-/** Vérifie que le serveur répond et que la base D1 est joignable (utilisé par l'app mobile et la supervision) */
+/** Vérifie que le serveur répond et que la base D1 est joignable (utilisé par la supervision) */
 export async function GET() {
   await connection();
   try {

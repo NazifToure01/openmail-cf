@@ -33,8 +33,7 @@ import type {
   RoutingInfo,
   Signature,
 } from "@/lib/types";
-import { APP_NAME } from "@/lib/brand";
-import { AppIcon, BrandAssetsProvider } from "./brand";
+import { AppIcon, BrandAssetsProvider, useBranding } from "./brand";
 import { Compose, type ComposeDraft } from "./compose";
 import { MessageView, type ViewAction } from "./message-view";
 import { SETTINGS_TABS, Settings, type SettingsTab } from "./settings";
@@ -89,6 +88,7 @@ export function MailApp() {
 
 function Mailbox() {
   const toast = useToast();
+  const branding = useBranding();
   const [config, setConfig] = useState<Config | null>(null);
   const [identities, setIdentities] = useState<Identity[]>([]);
   const [routing, setRouting] = useState<RoutingInfo | null>(null);
@@ -485,7 +485,7 @@ function Mailbox() {
       <div className="mb-3 flex items-center gap-2.5 px-2 pt-1">
         <AppIcon className="h-9 w-9 shrink-0" />
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="truncate font-brand text-[17px] font-extrabold tracking-[-0.04em]">{APP_NAME}</div>
+          <div className="truncate font-brand text-[17px] font-extrabold tracking-[-0.04em]">{branding.name}</div>
           <a href="/domaine" className="group flex items-center gap-1 text-xs text-muted hover:text-fg" title="Changer de domaine">
             <span className="truncate">@{domain}</span>
             <ChevronDown size={12} className="shrink-0 opacity-60 group-hover:opacity-100" />

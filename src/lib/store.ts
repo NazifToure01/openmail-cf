@@ -9,6 +9,9 @@ import type { AttachmentMeta, Contact, Identity, LibraryImage, Message, Signatur
 
 export type StoredAttachment = AttachmentMeta & { createdAt: string };
 
+/** Personnalisation de l'instance (document unique « branding ») */
+export type BrandingSetting = { id: "branding"; name?: string; logoVersion?: string | null; updatedAt: string };
+
 export type User = {
   id: string;
   email: string;
@@ -25,8 +28,6 @@ export type User = {
   updatedAt: string;
 };
 
-export type PushToken = { token: string; userId: string; platform: string; updatedAt: string };
-
 /** Le rendu HTML et la citation sont stockés à part (lus seulement pour afficher un message) */
 export const messages = new Table<Message>("messages", {
   key: "id",
@@ -40,4 +41,4 @@ export const contacts = new Table<Contact>("contacts", { key: "address" });
 export const attachments = new Table<StoredAttachment>("attachments", { key: "id" });
 export const images = new Table<LibraryImage>("images", { key: "name" });
 export const users = new Table<User>("users", { key: "id" });
-export const pushTokens = new Table<PushToken>("push_tokens", { key: "token" });
+export const settings = new Table<BrandingSetting>("settings", { key: "id" });

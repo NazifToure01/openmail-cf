@@ -13,11 +13,8 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Session : cookie (web) ou « Authorization: Bearer » (app mobile). L'utilisateur est revérifié par l'API.
-  const queryToken = pathname.startsWith("/api/attachments/") ? (request.nextUrl.searchParams.get("access_token") ?? undefined) : undefined;
-  const authenticated = await verifySessionToken(
-    queryToken ?? tokenFromRequest(request.headers, request.cookies.get(SESSION_COOKIE)?.value),
-  );
+  // Session : cookie (web) ou « Authorization: Bearer » (clients API). L'utilisateur est revérifié par l'API.
+  const authenticated = await verifySessionToken(tokenFromRequest(request.headers, request.cookies.get(SESSION_COOKIE)?.value));
   const isPublic =
     pathname === "/login" ||
     pathname === "/setup" ||

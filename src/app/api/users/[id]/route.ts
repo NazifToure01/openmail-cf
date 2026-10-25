@@ -2,7 +2,7 @@ import { hashPassword, passwordProblem } from "@/lib/auth";
 import { listDomains } from "@/lib/domains";
 import { HttpError, handler, readJson } from "@/lib/server";
 import { publicUser, requireAdmin } from "@/lib/session";
-import { pushTokens, users, type User } from "@/lib/store";
+import { users, type User } from "@/lib/store";
 import { cleanAccess } from "@/lib/user-input";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -43,6 +43,5 @@ export const DELETE = handler(async (_req: Request, { params }: Ctx) => {
   const { id } = await params;
   if (id === admin.id) throw new HttpError(400, "Vous ne pouvez pas supprimer votre propre compte");
   await users.remove(id);
-  await pushTokens.removeWhere("user_id = ?", [id]);
   return Response.json({ ok: true });
 });

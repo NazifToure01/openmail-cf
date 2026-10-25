@@ -10,7 +10,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 type ImagesBinding = {
   info(stream: ReadableStream<Uint8Array>): Promise<{ format: string; fileSize?: number; width?: number; height?: number }>;
   input(stream: ReadableStream<Uint8Array>): {
-    transform(t: { width?: number; fit?: "scale-down" }): {
+    transform(t: { width?: number; height?: number; fit?: "scale-down" | "pad"; background?: string }): {
       output(o: { format: "image/png" | "image/jpeg"; quality?: number; background?: string }): Promise<{ response(): Response }>;
     };
   };
@@ -50,4 +50,27 @@ export async function prepareImage(input: Uint8Array<ArrayBuffer>): Promise<Prep
     width: final.width ?? 0,
     height: final.height ?? 0,
   };
+}
+
+/**
+ * Logo de l'instance (favicon, icône d'écran d'accueil, en-tête) : PNG carré de 512 px au plus,
+ * plus une version 180 × 180 sur fond blanc pour iOS (qui affiche la transparence en noir).
+ */
+export async function prepareLogo(input: Uint8Array<ArrayBuffer>): Promise<{ icon: Uint8Array<ArrayBuffer>; apple: Uint8Array<ArrayBuffer> }> {
+  const { env } = await getCloudflareContext({ async: true });
+  const images = (env as unknown as { IMAGES?: ImagesBinding }).IMAGES;
+  if (!images) throw new Error("Le traitement d'images (binding « IMAGES ») n'est pas configuré");
+
+  const info = await images.info(stream(input)).catch(() => {
+    throw new Error("Format d'image non reconnu : utilisez un PNG, JPEG ou WebP");
+  });
+  if (info.format === "image/svg+xml") throw new Error("Le logo doit être une image PNG, JPEG ou WebP (pas de SVG)");
+
+  const render = async (t: Parameters<ReturnType<ImagesBinding["input"]>["transform"]>[0]) =>
+    new Uint8Array(await (await images.input(stream(input)).transform(t).output({ format: "image/png" })).response().arrayBuffer());
+  const [icon, apple] = await Promise.all([
+    render({ width: 512, height: 512, fit: "scale-down" }),
+    render({ width: 180, height: 180, fit: "pad", background: "#ffffff" }),
+  ]);
+  return { icon, apple };
 }

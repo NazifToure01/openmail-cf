@@ -6,7 +6,7 @@ import { users } from "@/lib/store";
 
 /**
  * Connexion : { email, password } → { token, user }
- * Le web reçoit aussi le cookie de session ; l'app mobile garde le jeton (stockage sécurisé).
+ * Le web reçoit aussi le cookie de session ; un client API utilise le jeton (en-tête Authorization: Bearer).
  */
 export const POST = publicHandler(async (request: Request) => {
   const body = await readJson<{ email?: unknown; password?: unknown }>(request);

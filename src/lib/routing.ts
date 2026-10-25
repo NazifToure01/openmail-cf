@@ -1,5 +1,5 @@
 import "server-only";
-import { APP_NAME } from "./brand";
+import { DEFAULT_APP_NAME } from "./brand";
 import type { RoutingStatus } from "./types";
 
 export type { RoutingInfo, RoutingStatus } from "./types";
@@ -82,7 +82,7 @@ export async function routingStatuses(zone: Zone, addresses: string[]): Promise<
 
 const body = (address: string) =>
   JSON.stringify({
-    name: `${APP_NAME} — ${address}`,
+    name: `${DEFAULT_APP_NAME} — ${address}`,
     enabled: true,
     matchers: [{ type: "literal", field: "to", value: address }],
     actions: [{ type: "worker", value: [workerName()] }],

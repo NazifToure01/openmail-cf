@@ -383,7 +383,6 @@ async function main() {
       APP_PASSWORD: env.APP_PASSWORD,
       SESSION_SECRET: env.SESSION_SECRET,
       INBOX_SECRET: state.inboxSecret,
-      EXPO_ACCESS_TOKEN: env.EXPO_ACCESS_TOKEN,
     };
     withSecretsFile(secrets, (file) =>
       run("npx", ["opennextjs-cloudflare", "deploy", "--config", "wrangler.deploy.jsonc", "--secrets-file", file], wranglerEnv),

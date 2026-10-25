@@ -79,10 +79,8 @@ CREATE TABLE users (
   disabled INTEGER GENERATED ALWAYS AS (coalesce(json_extract(data, '$.disabled'), 0)) VIRTUAL
 );
 
--- id = jeton Expo de l'appareil
-CREATE TABLE push_tokens (
+-- Réglages de l'instance (id = "branding" : nom affiché et version du logo)
+CREATE TABLE settings (
   id TEXT PRIMARY KEY,
-  data TEXT NOT NULL,
-  user_id TEXT GENERATED ALWAYS AS (json_extract(data, '$.userId')) VIRTUAL
+  data TEXT NOT NULL
 );
-CREATE INDEX push_tokens_user_id ON push_tokens (user_id);

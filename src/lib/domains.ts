@@ -84,7 +84,7 @@ export async function findDomain(name: string | undefined | null): Promise<MailD
 }
 
 /**
- * Domaine de travail : en-tête « X-Mail-Domain » (app mobile) ou cookie (web), validé contre la
+ * Domaine de travail : en-tête « X-Mail-Domain » (clients API) ou cookie (web), validé contre la
  * liste des domaines et les droits de l'utilisateur connecté.
  */
 export async function currentDomain(): Promise<MailDomain> {

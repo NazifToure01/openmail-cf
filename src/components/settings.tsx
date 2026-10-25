@@ -1,22 +1,24 @@
 "use client";
 
-import { AtSign, Check, CircleUser, Pencil, PenLine, Plus, Search, Star, Trash2, UserCog, Users } from "lucide-react";
+import { AtSign, Check, CircleUser, Palette, Pencil, PenLine, Plus, Search, Star, Trash2, UserCog, Users } from "lucide-react";
 import { useState } from "react";
 import { LOCAL_PART_RE, isValidEmail } from "@/lib/addresses";
 import { api } from "@/lib/api";
 import type { Contact, Identity, RoutingInfo, RoutingStatus, Signature } from "@/lib/types";
 import { useBrandAssetsUrl } from "./brand";
 import { RichEditor } from "./editor";
+import { AppearanceSettings } from "./settings-appearance";
 import { AccountSettings, UsersSettings, type AppUser } from "./settings-users";
 import { Avatar, Button, Field, IconButton, Modal, cn, inputClass, useToast } from "./ui";
 
-export type SettingsTab = "identities" | "signatures" | "contacts" | "users" | "account";
+export type SettingsTab = "identities" | "signatures" | "contacts" | "users" | "appearance" | "account";
 
 export const SETTINGS_TABS: { id: SettingsTab; label: string; icon: typeof AtSign; adminOnly?: boolean }[] = [
   { id: "identities", label: "Adresses d'envoi", icon: AtSign, adminOnly: true },
   { id: "signatures", label: "Signatures", icon: PenLine },
   { id: "contacts", label: "Contacts", icon: Users },
   { id: "users", label: "Utilisateurs", icon: UserCog, adminOnly: true },
+  { id: "appearance", label: "Apparence", icon: Palette, adminOnly: true },
   { id: "account", label: "Mon compte", icon: CircleUser },
 ];
 
@@ -46,6 +48,7 @@ export function Settings({
         {tab === "signatures" && <Signatures domain={domain} signatures={signatures} reload={reload} />}
         {tab === "contacts" && <Contacts contacts={contacts} reload={reload} />}
         {tab === "users" && me && <UsersSettings me={me} />}
+        {tab === "appearance" && me?.role === "admin" && <AppearanceSettings />}
         {tab === "account" && me && <AccountSettings me={me} onUpdated={reload} />}
       </div>
     </div>
