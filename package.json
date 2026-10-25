@@ -1,7 +1,7 @@
 {
   "name": "openmail-cf",
   "version": "0.1.0",
-  "description": "Webmail multi-domaines open source auto-hébergé sur Cloudflare (Email Sending, Email Routing, Workers, D1, R2)",
+  "description": "Webmail open source auto-hébergé sur Cloudflare (Email Sending, Email Routing, Workers, D1, R2), avec IA facultative",
   "license": "MIT",
   "private": true,
   "engines": {
@@ -16,7 +16,8 @@
     "cf:build": "opennextjs-cloudflare build",
     "deploy": "node scripts/deploy.mjs",
     "deploy:app": "node scripts/deploy.mjs --app",
-    "deploy:inbox": "node scripts/deploy.mjs --inbox"
+    "deploy:inbox": "node scripts/deploy.mjs --inbox",
+    "test": "node tests/run.mjs"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.12",

@@ -132,6 +132,9 @@ export function summarize(m: Message): MessageSummary {
     error: m.error,
     snippet: source.replace(/\s+/g, " ").slice(0, 160),
     attachmentCount: m.attachments.filter((a) => !a.inline).length,
+    ...(m.ai?.triagedAt
+      ? { ai: { category: m.ai.category, priority: m.ai.priority, needsReply: m.ai.needsReply, gist: m.ai.gist, phishing: m.ai.phishing } }
+      : {}),
   };
 }
 

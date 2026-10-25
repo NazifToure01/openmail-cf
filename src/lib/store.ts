@@ -12,6 +12,18 @@ export type StoredAttachment = AttachmentMeta & { createdAt: string };
 /** Personnalisation de l'instance (document unique « branding ») */
 export type BrandingSetting = { id: "branding"; name?: string; logoVersion?: string | null; updatedAt: string };
 
+/** Réglages des fonctionnalités IA (document unique « ai ») */
+export type AiSetting = {
+  id: "ai";
+  features: Record<"compose" | "summary" | "triage" | "search", boolean>;
+  /** Appels IA par utilisateur et par jour */
+  dailyLimit: number;
+  digest: { enabled: boolean; hour: number; timeZone: string; lastSentDay?: string };
+  updatedAt: string;
+};
+
+export type AiUsage = { id: string; count: number; day: string };
+
 export type User = {
   id: string;
   email: string;
@@ -42,3 +54,5 @@ export const attachments = new Table<StoredAttachment>("attachments", { key: "id
 export const images = new Table<LibraryImage>("images", { key: "name" });
 export const users = new Table<User>("users", { key: "id" });
 export const settings = new Table<BrandingSetting>("settings", { key: "id" });
+export const aiSettings = new Table<AiSetting>("settings", { key: "id" });
+export const aiUsage = new Table<AiUsage>("ai_usage", { key: "id" });

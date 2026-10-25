@@ -66,6 +66,9 @@ export function Compose({
 }) {
   const toast = useToast();
   const [draft, setDraft] = useState<ComposeDraft>(initial);
+  // Assistant IA : objet en cours et message cité (réponse, transfert) comme contexte
+  const quotedText = useMemo(() => (draft.quotedHtml ? htmlToText(draft.quotedHtml).slice(0, 6000) : undefined), [draft.quotedHtml]);
+  const aiContext = useMemo(() => ({ subject: draft.subject || undefined, replyTo: quotedText }), [draft.subject, quotedText]);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [showCc, setShowCc] = useState(initial.cc.length > 0);
   const [showBcc, setShowBcc] = useState(initial.bcc.length > 0);
@@ -456,6 +459,7 @@ export function Compose({
           onChange={(bodyHtml) => update({ bodyHtml })}
           placeholder="Écrivez votre message…"
           minHeight={140}
+          aiContext={aiContext}
           autoFocus={initial.to.length > 0}
           footer={
             <div className="space-y-3 px-4 pb-4">

@@ -18,6 +18,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { MessageAiPanel } from "./ai";
 import { EmailFrame } from "./email-frame";
 import { formatAddress } from "@/lib/addresses";
 import { formatBytes, formatFullDate } from "@/lib/api";
@@ -47,7 +48,8 @@ export function MessageView({
   message: Message | null;
   deliveryError?: string | null;
   loading: boolean;
-  onAction: (action: ViewAction) => void;
+  /** bodyHtml : corps prérempli (réponse suggérée par l'IA) */
+  onAction: (action: ViewAction, bodyHtml?: string) => void;
   onBack: () => void;
 }) {
   if (loading && !message) {
@@ -179,6 +181,7 @@ export function MessageView({
             </div>
           )}
           {message.result && <DeliveryStatus result={message.result} delivery={message.delivery} trackingError={deliveryError} />}
+          {incoming && !inTrash && <MessageAiPanel key={message.id} message={message} onReply={(html) => onAction("reply", html)} />}
 
           <div className="mt-6">
             <EmailFrame html={message.html ?? message.bodyHtml} />

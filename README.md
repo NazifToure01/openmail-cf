@@ -2,13 +2,14 @@
 
 **Webmail open source, auto-hébergé sur Cloudflare.** Envoyez et recevez les e-mails de votre propre domaine depuis une interface web, sans serveur ni base de données externe à administrer : tout tourne sur votre compte Cloudflare (Workers, D1, R2).
 
-> 🇬🇧 *Self-hosted webmail for your own domain, running entirely on Cloudflare (Email Sending, Email Routing, Workers, D1, R2). Clone, fill in `.env` (4 values), run `npm run deploy`. The UI is in French. MIT licensed.*
+> 🇬🇧 *Self-hosted webmail for your own domain, with optional AI features (writing assistant, summaries, triage, semantic search), running entirely on Cloudflare (Email Sending, Email Routing, Workers, D1, R2). Clone, fill in `.env` (4 values), run `npm run deploy`. The UI is in French. MIT licensed.*
 
 - ✉️ Envoi via **Cloudflare Email Sending** (pièces jointes, CC/CCI, signatures, éditeur riche, images)
 - 📥 Réception via **Cloudflare Email Routing** → un Email Worker → votre boîte de réception
 - 🌐 Un domaine par instance, autant d'adresses que vous voulez (`contact@`, `support@`…), plusieurs utilisateurs avec droits par adresse
 - 📊 Suivi de remise (Délivré / Rejeté) via les journaux d'envoi Cloudflare
 - 🎨 Nom et logo de votre instance (favicon compris) choisis à l'installation, modifiables ensuite
+- 🤖 **IA facultative** : assistant de rédaction, résumés, réponses suggérées, tri et alerte d'hameçonnage, recherche par le sens, résumé quotidien — avec Workers AI (sans clé) ou la clé de votre choix (Mistral, OpenAI…)
 - 🚀 Déploiement en **une commande**
 
 ---
@@ -23,10 +24,12 @@
 6. [Ce que fait `npm run deploy`](#ce-que-fait-npm-run-deploy)
 7. [Mises à jour](#mises-à-jour)
 8. [Développement local](#développement-local)
-9. [Personnalisation](#personnalisation)
-10. [Sécurité](#sécurité)
-11. [Dépannage](#dépannage)
-12. [Licence](#licence)
+9. [Tests](#tests)
+10. [Intelligence artificielle (facultatif)](#intelligence-artificielle-facultatif)
+11. [Personnalisation](#personnalisation)
+12. [Sécurité](#sécurité)
+13. [Dépannage](#dépannage)
+14. [Licence](#licence)
 
 ---
 
@@ -151,7 +154,7 @@ Toutes se placent dans `.env` (jamais versionné). Voir `.env.example` pour le m
 | Variable | Obligatoire | Description |
 |---|:---:|---|
 | `CLOUDFLARE_API_TOKEN` | ✅ | Token Cloudflare (voir ci-dessus) |
-| `MAIL_DOMAIN` | ✅ | Domaine(s) d'envoi/réception, séparés par des virgules |
+| `MAIL_DOMAIN` | ✅ | Domaine d'envoi et de réception (un seul par instance) |
 | `APP_PASSWORD` | ✅ | Mot de passe d'installation (création du premier admin) |
 | `SESSION_SECRET` | ✅ | Clé HMAC des sessions, 32+ caractères (`openssl rand -hex 32`) |
 | `APP_HOSTNAME` | | Adresse de l'app. Défaut : `mail.<MAIL_DOMAIN>` |
@@ -163,6 +166,12 @@ Toutes se placent dans `.env` (jamais versionné). Voir `.env.example` pour le m
 | `CATCH_ALL` | | `true` : toutes les adresses inconnues du domaine arrivent dans l'app |
 | `FORWARD_TO` | | Copie de chaque e-mail reçu vers cette adresse (à vérifier dans Email Routing → *Destination addresses*) |
 | `BRAND_ASSETS_URL` | | URL publique des logos insérables dans les e-mails |
+| `AI_PROVIDER` | | Active l'IA : `workers-ai`, `mistral`, `openai` ou `openai-compatible` ([détails](#intelligence-artificielle-facultatif)) |
+| `AI_API_KEY` | | Clé du fournisseur d'IA (sauf Workers AI), envoyée comme secret |
+| `AI_BASE_URL` | | URL de l'API compatible OpenAI (`openai-compatible`) |
+| `AI_MODEL` / `AI_EMBEDDING_MODEL` | | Modèles de texte et d'embeddings (défauts selon le fournisseur) |
+| `AI_GATEWAY_ID` | | Passe les appels Workers AI par Cloudflare AI Gateway |
+| `AI_AUTO_DAILY_LIMIT` | | Plafond quotidien des traitements IA automatiques (défaut 2000) |
 
 ## Ce que fait `npm run deploy`
 
@@ -175,6 +184,7 @@ Le script [`scripts/deploy.mjs`](scripts/deploy.mjs) est **idempotent** : relanc
 5. **Déploie le Worker de réception** `openmail-cf-inbox` (dossier `worker/`).
 6. **Compile l'app** Next.js avec OpenNext puis la **déploie** sur `https://<APP_HOSTNAME>` ; Cloudflare crée l'enregistrement DNS et le certificat.
 7. Envoie les valeurs sensibles comme **secrets Wrangler** chiffrés (jamais dans le code déployé).
+8. Si `AI_PROVIDER` est défini : ajoute le binding Workers AI (ou la clé `AI_API_KEY` en secret) et la tâche horaire du résumé quotidien.
 
 Les fichiers `wrangler.deploy.jsonc` et `worker/wrangler.deploy.json` sont générés à chaque déploiement et ignorés par git.
 
@@ -211,6 +221,80 @@ Worker de réception en local :
 cd worker && npm install && npx wrangler dev
 ```
 
+IA en local : le binding Workers AI n'est pas simulé. Utilisez un fournisseur compatible OpenAI, par exemple [Ollama](https://ollama.com) sur votre machine (`AI_PROVIDER=openai-compatible`, `AI_BASE_URL=http://localhost:11434/v1`, `AI_MODEL=…`, `AI_EMBEDDING_MODEL=…`).
+
+## Tests
+
+```bash
+npm test
+```
+
+Tests de bout en bout ([`tests/`](tests/)) : le script démarre un **serveur factice** qui remplace le fournisseur d'IA (API compatible OpenAI), l'API Cloudflare et le Worker de réception, crée une base D1 locale **temporaire** (vos données de développement ne sont pas touchées), lance l'app puis exécute les scénarios avec `node --test` :
+
+- [`01-core.test.mjs`](tests/01-core.test.mjs) : installation, nom et logo, sessions, adresses, brouillons volumineux, envoi, corbeille, utilisateurs et droits ;
+- [`02-ai.test.mjs`](tests/02-ai.test.mjs) : tri des e-mails reçus, hameçonnage, export .ics, filtres, résumé et cache, réponses suggérées, rédaction, recherche par le sens et droits d'accès, questions avec sources, indexation, résumé quotidien (heure, une fois par jour, secret), réglages, quotas, erreurs du fournisseur, isolation du contenu des e-mails dans les consignes.
+
+Aucun service réel n'est appelé et aucune clé n'est nécessaire. `TEST_SERVER_LOG=1 npm test` affiche les journaux de l'app en cas d'échec.
+
+## Intelligence artificielle (facultatif)
+
+OpenMail CF peut s'appuyer sur un modèle d'IA pour vous faire gagner du temps. **Tout est désactivé par défaut** : rien n'est envoyé à un service d'IA tant que `AI_PROVIDER` n'est pas défini.
+
+### Fonctionnalités
+
+| Fonctionnalité | Où | Quand le modèle est appelé |
+|---|---|---|
+| **Assistant de rédaction** : rédiger à partir d'une consigne, corriger, raccourcir, développer, ton formel ou chaleureux, traduire, consigne libre | Bouton ✨ de l'éditeur | À la demande |
+| **Résumé** d'un e-mail (mis en cache) et **3 réponses suggérées**, qui ouvrent un brouillon modifiable | Panneau *Assistant* au-dessus d'un e-mail reçu | À la demande |
+| **Tri automatique** : catégorie (client, facture, rendez-vous, newsletter…), priorité, « à répondre », **alerte d'hameçonnage**, rendez-vous repérés et **exportables en .ics** | Badges et filtres de la boîte de réception | À chaque e-mail reçu |
+| **Recherche par le sens** (« la facture d'OVH de mars ») et **questions sur la boîte** (« quand ai-je envoyé le contrat à Paul ? »), avec les e-mails cités en sources | Bouton ✨ de la barre de recherche | À la recherche ; chaque e-mail reçu ou envoyé est vectorisé (embeddings) |
+| **Résumé quotidien** par e-mail : l'essentiel des dernières 24 h, prioritaires d'abord | Envoyé à chaque utilisateur, à l'heure choisie | Une fois par jour |
+
+Chaque fonctionnalité s'active ou se désactive dans **Réglages → IA** (administrateurs), avec une **limite de requêtes par utilisateur et par jour**, l'heure et le fuseau du résumé quotidien, un bouton d'aperçu et l'indexation des anciens e-mails pour la recherche.
+
+### Activer l'IA
+
+Ajoutez à `.env`, puis relancez `npm run deploy` :
+
+```ini
+# Option 1 — Cloudflare Workers AI : aucune clé, les données restent chez Cloudflare
+AI_PROVIDER=workers-ai
+# AI_MODEL=@cf/google/gemma-4-26b-a4b-it     (défaut)
+# AI_EMBEDDING_MODEL=@cf/baai/bge-m3         (défaut, multilingue)
+# AI_GATEWAY_ID=default                      (facultatif : passer par AI Gateway)
+
+# Option 2 — Mistral AI ou OpenAI
+AI_PROVIDER=mistral            # ou openai
+AI_API_KEY=…                   # envoyée à Cloudflare comme secret chiffré
+# AI_MODEL=mistral-small-latest   AI_EMBEDDING_MODEL=mistral-embed   (défauts Mistral)
+# AI_MODEL=gpt-4.1-mini           AI_EMBEDDING_MODEL=text-embedding-3-small   (défauts OpenAI)
+
+# Option 3 — tout service compatible OpenAI (OpenRouter, Groq, Together, Ollama, AI Gateway…)
+AI_PROVIDER=openai-compatible
+AI_BASE_URL=https://openrouter.ai/api/v1
+AI_API_KEY=…
+AI_MODEL=mistralai/mistral-small-3.2-24b-instruct
+# AI_EMBEDDING_MODEL=…         (sans modèle d'embeddings, la recherche par le sens est désactivée)
+```
+
+`npm run deploy` ajoute alors le binding Workers AI (option 1), transmet la clé comme secret et programme une **tâche horaire** sur le Worker de réception pour le résumé quotidien (l'app n'envoie qu'à l'heure choisie). Supprimer `AI_PROVIDER` puis redéployer désactive tout. Avec Workers AI, si `wrangler` refuse le déploiement faute de droits, ajoutez au token la permission *Account → Workers AI → Read*.
+
+Les modèles par défaut ci-dessus sont des suggestions : les catalogues évoluent vite, choisissez librement via `AI_MODEL` et `AI_EMBEDDING_MODEL`. Changer de modèle d'embeddings demande de réindexer (Réglages → IA → *Indexer les anciens e-mails*).
+
+### Confidentialité et sécurité
+
+- **Ce qui part chez le fournisseur** : le texte des e-mails traités (en-têtes De / À / Objet / Date et début du corps, tronqué), et le texte que vous demandez à transformer. Ni pièces jointes, ni mots de passe, ni clés. Avec Workers AI, les données restent sur l'infrastructure Cloudflare ; avec un fournisseur tiers, ses conditions d'utilisation s'appliquent (vérifiez la conservation des données).
+- **L'IA ne fait que proposer** : elle n'envoie, ne supprime et ne déplace jamais rien. Réponses suggérées et textes générés passent par un brouillon que vous relisez.
+- **Injection de consignes** : un e-mail peut contenir « ignore tes instructions… ». Le contenu des e-mails est toujours transmis comme une donnée, entre balises `<email>`, séparé des consignes ; les réponses du modèle sont validées (catégories autorisées, dates, longueur) et affichées comme du texte, jamais comme du HTML.
+- **Droits** : un membre ne peut résumer, rechercher ou interroger que les boîtes auxquelles il a accès ; le résumé quotidien de chacun ne contient que ses boîtes.
+- **Coûts** : limite par utilisateur et par jour (Réglages → IA) et plafond des traitements automatiques (`AI_AUTO_DAILY_LIMIT`, 2 000 par jour par défaut). Workers AI inclut une allocation gratuite quotidienne ; au-delà, voir la tarification de votre fournisseur.
+
+### Fonctionnement technique
+
+- Module unique [`src/lib/ai.ts`](src/lib/ai.ts) (fournisseurs, quotas, réglages) et [`src/lib/ai-mail.ts`](src/lib/ai-mail.ts) (fonctionnalités et consignes).
+- Le tri et l'indexation des e-mails reçus tournent après la réponse HTTP (`after()`), sans ralentir l'import.
+- Les vecteurs de la recherche sont stockés dans D1 (table `message_embeddings`) et comparés dans le Worker : aucune ressource supplémentaire à créer, adapté à quelques dizaines de milliers d'e-mails par instance.
+
 ## Personnalisation
 
 - **Nom et logo de l'instance** : choisis lors de l'installation (`/setup`), puis modifiables par un administrateur dans **Réglages → Apparence**, sans redéployer. Le logo (PNG, JPEG ou WebP, idéalement carré 512 × 512 px) est redimensionné par le binding Images et stocké dans R2 ; il sert de favicon, d'icône d'écran d'accueil (iOS / Android), de logo des pages de connexion et de l'en-tête, et peut être inséré dans les e-mails depuis l'éditeur. Sans logo personnalisé, l'icône par défaut (`public/default-icon.svg`, `public/default-apple-icon.png`) est utilisée.
@@ -223,6 +307,7 @@ cd worker && npm install && npx wrangler dev
 - Les secrets sont transmis à Cloudflare via un fichier temporaire (`--secrets-file`) supprimé aussitôt ; le script vide aussi le fichier `.open-next/cloudflare/next-env.mjs` où OpenNext recopierait sinon le contenu de `.env`.
 - Mots de passe hachés en PBKDF2-SHA256, sessions signées HMAC-SHA256 (révocables par utilisateur).
 - L'API du Worker de réception est protégée par `INBOX_SECRET` (comparaison en temps constant) ; seules les images des e-mails et les logos sont publics (le logo de l'instance est servi publiquement sur `/brand/icon.png`).
+- IA : contenu des e-mails isolé des consignes, aucune action automatique, droits par boîte respectés — voir [Confidentialité et sécurité](#confidentialité-et-sécurité).
 - Utilisez de préférence un [token d'exécution restreint](#recommandé--séparer-le-token-de-déploiement-et-le-token-dexécution).
 - Pour signaler une faille, ouvrez une *security advisory* privée sur le dépôt GitHub plutôt qu'une issue publique.
 

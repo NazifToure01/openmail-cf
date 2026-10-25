@@ -13,6 +13,8 @@ export const GET = handler(async (request: Request) => {
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
   // Boîte sélectionnée (ex. contact@example.com) ; vide = toutes les boîtes
   const mailbox = (url.searchParams.get("mailbox") ?? "").trim().toLowerCase();
+  // Filtre du tri IA : priority, reply, ou une catégorie (facture, newsletter…)
+  const aiFilter = (url.searchParams.get("ai") ?? "").trim().toLowerCase();
   const domain = (await currentDomain()).name;
   const access = mailboxAccess(currentUser(), domain);
   const allowed = (address: string) => access === "*" || (access ?? []).includes(address);
@@ -66,6 +68,9 @@ export const GET = handler(async (request: Request) => {
         .includes(q),
     );
   }
+  if (aiFilter === "priority") list = list.filter((m) => m.ai?.priority === "high");
+  else if (aiFilter === "reply") list = list.filter((m) => m.ai?.needsReply);
+  else if (aiFilter) list = list.filter((m) => m.ai?.category === aiFilter);
   list.sort((a, b) => (b.sentAt ?? b.updatedAt).localeCompare(a.sentAt ?? a.updatedAt));
   const mailboxes = [...boxes.values()].sort((a, b) => b.total - a.total || a.address.localeCompare(b.address));
   return Response.json({ messages: list.map(summarize), counts, mailboxes });

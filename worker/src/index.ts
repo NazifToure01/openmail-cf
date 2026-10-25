@@ -9,6 +9,9 @@
  *     GET    /messages/:key   -> MIME brut (message/rfc822)
  *     DELETE /messages/:key   -> { ok: true }
  *
+ * - scheduled() : chaque heure (si l'IA est activée), demande à l'app d'envoyer le résumé quotidien
+ *                (l'app vérifie l'heure choisie dans Réglages → IA).
+ *
  * Images des e-mails (insérées depuis l'éditeur) :
  *     PUT    /images/:id      -> stocke l'image (protégé par INBOX_SECRET)
  *     GET    /images/:id      -> public : c'est l'adresse lue par les clients mail des destinataires
@@ -70,6 +73,16 @@ export default {
         console.error("Transfert impossible vers", env.FORWARD_TO, String(err));
       }
     }
+  },
+
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (!env.APP_HOOK_URL) return;
+    const url = env.APP_HOOK_URL.replace(/\/api\/inbox\/hook$/, "/api/ai/digest");
+    ctx.waitUntil(
+      fetch(url, { method: "POST", headers: { Authorization: `Bearer ${env.INBOX_SECRET}` } })
+        .then(async (r) => console.log("Résumé quotidien", r.status, await r.text()))
+        .catch((err) => console.error("App injoignable", String(err))),
+    );
   },
 
   async fetch(request: Request, env: Env): Promise<Response> {

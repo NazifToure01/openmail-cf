@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Sparkles,
   Star,
   Trash2,
   X,
@@ -24,6 +25,7 @@ import { api, formatFullDate, formatListDate } from "@/lib/api";
 import { escapeHtml, extractEmailContent } from "@/lib/email-html";
 import type {
   Address,
+  AiStatus,
   Contact,
   FolderCounts,
   Identity,
@@ -33,6 +35,7 @@ import type {
   RoutingInfo,
   Signature,
 } from "@/lib/types";
+import { AI_FILTERS, AiBadges, AiProvider } from "./ai";
 import { AppIcon, BrandAssetsProvider, useBranding } from "./brand";
 import { Compose, type ComposeDraft } from "./compose";
 import { MessageView, type ViewAction } from "./message-view";
@@ -51,7 +54,7 @@ const FOLDERS: { id: MailFolder; label: string; icon: typeof Send }[] = [
   { id: "trash", label: "Corbeille", icon: Trash2 },
 ];
 
-type Config = { domain: string; cloudflareConfigured: boolean; inboxConfigured: boolean; brandAssetsUrl: string | null };
+type Config = { domain: string; cloudflareConfigured: boolean; inboxConfigured: boolean; brandAssetsUrl: string | null; ai: AiStatus };
 
 /* ---------- Boîte sélectionnée, mémorisée dans le navigateur ---------- */
 const MAILBOX_KEY = "mb.mailbox";
@@ -106,6 +109,11 @@ function Mailbox() {
   const [loadingList, setLoadingList] = useState(true);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  // IA : filtre du tri, recherche par le sens, question posée à la boîte
+  const [aiFilter, setAiFilter] = useState("");
+  const [semantic, setSemantic] = useState(false);
+  const [answer, setAnswer] = useState<{ question: string; text: string; sources: MessageSummary[] } | null>(null);
+  const [asking, setAsking] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Message | null>(null);
@@ -114,6 +122,8 @@ function Mailbox() {
   const [drawer, setDrawer] = useState(false);
 
   const folder = view.type === "mail" ? view.folder : null;
+  const aiOn = (f: "compose" | "summary" | "triage" | "search") => Boolean(config?.ai.enabled && config.ai.features[f]);
+  const semanticSearch = semantic && aiOn("search") && Boolean(debouncedQuery);
 
   /* ---------- Chargements ---------- */
   const loadSettings = useCallback(
@@ -141,10 +151,18 @@ function Mailbox() {
   const listRequest = useRef(0);
   const loadMessages = useCallback(() => {
     if (!folder) return Promise.resolve();
+    const request = ++listRequest.current;
+    if (semanticSearch) {
+      // Recherche par le sens : tous les dossiers, classés par pertinence
+      return api<{ messages: MessageSummary[] }>(`/api/ai/search?${new URLSearchParams({ q: debouncedQuery })}`)
+        .then((data) => request === listRequest.current && setMessages(data.messages))
+        .catch((err: Error) => toast(err.message, "error"))
+        .finally(() => request === listRequest.current && setLoadingList(false));
+    }
     const params = new URLSearchParams({ folder });
     if (debouncedQuery) params.set("q", debouncedQuery);
     if (mailbox) params.set("mailbox", mailbox);
-    const request = ++listRequest.current;
+    if (aiFilter && folder === "inbox") params.set("ai", aiFilter);
     return api<{ messages: MessageSummary[]; counts: FolderCounts; mailboxes: MailboxInfo[] }>(`/api/messages?${params}`)
       .then((data) => {
         if (request !== listRequest.current) return;
@@ -154,7 +172,22 @@ function Mailbox() {
       })
       .catch((err: Error) => toast(err.message, "error"))
       .finally(() => request === listRequest.current && setLoadingList(false));
-  }, [folder, debouncedQuery, mailbox, toast]);
+  }, [folder, debouncedQuery, mailbox, aiFilter, semanticSearch, toast]);
+
+  /** Question posée à l'IA sur l'ensemble des e-mails */
+  const ask = async () => {
+    const question = query.trim();
+    if (!question) return;
+    setAsking(true);
+    try {
+      const r = await api<{ answer: string; sources: MessageSummary[] }>("/api/ai/ask", { method: "POST", json: { question } });
+      setAnswer({ question, text: r.answer, sources: r.sources });
+    } catch (err) {
+      toast((err as Error).message, "error");
+    } finally {
+      setAsking(false);
+    }
+  };
 
   const loadMessagesRef = useRef(loadMessages);
   useEffect(() => {
@@ -357,7 +390,7 @@ function Mailbox() {
   };
 
   /* ---------- Actions ---------- */
-  const handleAction = async (action: ViewAction) => {
+  const handleAction = async (action: ViewAction, bodyHtml?: string) => {
     const m = shown;
     if (!m) return;
     const identity = identities.find((i) => i.address === m.from.address);
@@ -384,7 +417,7 @@ function Mailbox() {
     try {
       switch (action) {
         case "reply":
-          return openCompose({ ...replyBase(), to: [m.replyTo ?? m.from] });
+          return openCompose({ ...replyBase(), to: [m.replyTo ?? m.from], ...(bodyHtml ? { bodyHtml } : {}) });
         case "replyAll": {
           const to = [m.replyTo ?? m.from];
           const skip = new Set([...to.map((a) => a.address), replyFrom?.address]);
@@ -467,6 +500,8 @@ function Mailbox() {
     setView(v);
     setSelectedId(null);
     setQuery("");
+    setAiFilter("");
+    setAnswer(null);
     setDrawer(false);
   };
 
@@ -555,6 +590,7 @@ function Mailbox() {
   );
 
   return (
+    <AiProvider value={config?.ai ?? { enabled: false }}>
     <BrandAssetsProvider value={config?.brandAssetsUrl ?? null}>
     <div className="flex h-dvh overflow-hidden">
       <aside className="hidden w-60 shrink-0 border-r border-line bg-surface lg:block">{sidebar}</aside>
@@ -627,17 +663,92 @@ function Mailbox() {
                   <Search size={15} className="absolute left-3 top-2.5 text-subtle" />
                   <input
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Rechercher (destinataire, objet, contenu…)"
-                    className="h-9 w-full rounded-lg bg-surface-2 pl-9 pr-8 text-sm outline-none placeholder:text-subtle focus:ring-2 focus:ring-accent/30"
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setAnswer(null);
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && semantic && aiOn("search") && void ask()}
+                    placeholder={semantic && aiOn("search") ? "Recherche IA : « la facture d'OVH de mars »" : "Rechercher (destinataire, objet, contenu…)"}
+                    className={cn(
+                      "h-9 w-full rounded-lg bg-surface-2 pl-9 text-sm outline-none placeholder:text-subtle focus:ring-2 focus:ring-accent/30",
+                      aiOn("search") ? "pr-14" : "pr-8",
+                    )}
                   />
-                  {query && (
-                    <button type="button" aria-label="Effacer" onClick={() => setQuery("")} className="absolute right-2 top-2 rounded p-0.5 text-muted hover:text-fg">
-                      <X size={15} />
-                    </button>
-                  )}
+                  <div className="absolute right-1.5 top-1.5 flex items-center gap-0.5">
+                    {query && (
+                      <button type="button" aria-label="Effacer" onClick={() => setQuery("")} className="rounded p-0.5 text-muted hover:text-fg">
+                        <X size={15} />
+                      </button>
+                    )}
+                    {aiOn("search") && (
+                      <button
+                        type="button"
+                        aria-pressed={semantic}
+                        title={semantic ? "Recherche IA activée (par le sens)" : "Activer la recherche IA (par le sens)"}
+                        aria-label="Recherche IA"
+                        onClick={() => {
+                          setSemantic(!semantic);
+                          setAnswer(null);
+                        }}
+                        className={cn("rounded-md p-1", semantic ? "bg-accent-soft text-accent" : "text-muted hover:text-fg")}
+                      >
+                        <Sparkles size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {semantic && aiOn("search") && query.trim() && !answer && (
+                  <button type="button" onClick={ask} disabled={asking} className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-accent hover:underline disabled:opacity-60">
+                    <Sparkles size={13} className={cn(asking && "animate-pulse")} /> {asking ? "Recherche de la réponse…" : "Demander à l'IA (Entrée)"}
+                  </button>
+                )}
+                {folder === "inbox" && aiOn("triage") && !debouncedQuery && (
+                  <div className="-mx-1 mt-2 flex gap-1 overflow-x-auto pb-0.5">
+                    {AI_FILTERS.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          setLoadingList(true);
+                          setAiFilter(f.id);
+                        }}
+                        className={cn(
+                          "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                          aiFilter === f.id ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted hover:text-fg",
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+              {answer && (
+                <div className="border-b border-line bg-accent-soft/40 px-4 py-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-accent">
+                    <Sparkles size={13} /> Réponse de l&apos;IA
+                    <button type="button" aria-label="Fermer la réponse" onClick={() => setAnswer(null)} className="ml-auto rounded p-0.5 text-muted hover:text-fg">
+                      <X size={13} />
+                    </button>
+                  </div>
+                  <p className="whitespace-pre-line text-[13px] leading-relaxed">{answer.text}</p>
+                  {answer.sources.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {answer.sources.map((src, i) => (
+                        <button
+                          key={src.id}
+                          type="button"
+                          onClick={() => setSelectedId(src.id)}
+                          className="max-w-full truncate rounded-md border border-line bg-surface px-2 py-0.5 text-left text-xs hover:border-accent"
+                        >
+                          [{i + 1}] {src.subject || "(sans objet)"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 text-[11px] text-subtle">Vérifiez dans les e-mails cités : l&apos;IA peut se tromper.</p>
+                </div>
+              )}
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {loadingList && messages.length === 0 ? (
                   <div className="flex justify-center py-10 text-muted">
@@ -696,6 +807,7 @@ function Mailbox() {
       )}
     </div>
     </BrandAssetsProvider>
+    </AiProvider>
   );
 }
 
@@ -747,6 +859,7 @@ function MessageRow({ m, active, onClick }: { m: MessageSummary; active: boolean
             )}
             {bounced > 0 && <span className="shrink-0 rounded bg-danger-soft px-1.5 text-[11px] font-medium text-danger">Rejeté</span>}
             {queuedOnly && <span className="shrink-0 rounded bg-warning-soft px-1.5 text-[11px] font-medium text-warning">En attente</span>}
+            <AiBadges ai={m.ai} compact />
             <span className="truncate text-[13px] text-muted">{m.snippet || "—"}</span>
           </div>
           <div className="mt-0.5 truncate text-xs text-subtle">

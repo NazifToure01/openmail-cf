@@ -66,6 +66,40 @@ export type Message = {
   delivery?: Record<string, { status: string; at: string; detail?: string }>;
   /** Dernière erreur d'envoi (brouillon dont l'envoi a échoué) */
   error?: string;
+  /** Analyse par l'IA (messages reçus) : tri, résumé, alertes */
+  ai?: MessageAi;
+};
+
+export const AI_CATEGORIES = [
+  "personnel",
+  "client",
+  "facture",
+  "commande",
+  "rendez-vous",
+  "newsletter",
+  "notification",
+  "promotion",
+  "autre",
+] as const;
+export type AiCategory = (typeof AI_CATEGORIES)[number];
+export type AiPriority = "high" | "normal" | "low";
+
+/** Événement repéré dans un e-mail (exporté en .ics) ; dates ISO 8601 sans fuseau = heure locale */
+export type AiEvent = { title: string; start: string; end?: string; location?: string };
+
+export type MessageAi = {
+  category?: AiCategory;
+  priority?: AiPriority;
+  /** Une réponse est attendue */
+  needsReply?: boolean;
+  /** Résumé d'une ligne (liste, résumé quotidien) */
+  gist?: string;
+  /** Résumé détaillé, demandé depuis la lecture du message */
+  summary?: string;
+  phishing?: { risk: "low" | "medium" | "high"; reasons: string[] };
+  events?: AiEvent[];
+  triagedAt?: string;
+  summarizedAt?: string;
 };
 
 export type MessageSummary = Pick<
@@ -86,7 +120,7 @@ export type MessageSummary = Pick<
   | "sentAt"
   | "result"
   | "error"
-> & { snippet: string; attachmentCount: number };
+> & { snippet: string; attachmentCount: number; ai?: Pick<MessageAi, "category" | "priority" | "needsReply" | "gist" | "phishing"> };
 
 export type Identity = {
   id: string;
@@ -165,3 +199,8 @@ export type LibraryImage = {
   domain: string;
   createdAt: string;
 };
+
+/** Fonctionnalités IA disponibles, renvoyées par /api/config (aucune clé ni adresse interne) */
+export type AiStatus =
+  | { enabled: false }
+  | { enabled: true; provider: string; model: string; features: { compose: boolean; summary: boolean; triage: boolean; search: boolean } };

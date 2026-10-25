@@ -21,6 +21,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/auth/") ||
     // Appel du Worker de réception (protégé par INBOX_SECRET)
     pathname === "/api/inbox/hook" ||
+    // Résumé quotidien déclenché par la tâche planifiée du Worker (protégé par INBOX_SECRET)
+    pathname === "/api/ai/digest" ||
     pathname === "/api/health" ||
     // Images des e-mails et logos : lues par les clients mail des destinataires
     pathname.startsWith("/img/") ||

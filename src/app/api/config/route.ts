@@ -1,3 +1,4 @@
+import { aiClientStatus } from "@/lib/ai";
 import { isCloudflareConfigured } from "@/lib/cloudflare";
 import { isInboxConfigured } from "@/lib/inbound";
 import { currentDomain } from "@/lib/domains";
@@ -15,5 +16,7 @@ export const GET = handler(async () =>
       (process.env.INBOX_WORKER_URL ? `${process.env.INBOX_WORKER_URL.replace(/\/+$/, "")}/brand` : null),
     maxMessageBytes: MAX_MESSAGE_BYTES,
     maxRecipients: MAX_RECIPIENTS,
+    // Fonctionnalités IA disponibles (aucune clé n'est transmise)
+    ai: await aiClientStatus(),
   }),
 );

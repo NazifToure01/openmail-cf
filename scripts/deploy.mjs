@@ -65,6 +65,24 @@ const required = {
   SESSION_SECRET: "clé de signature des sessions : openssl rand -hex 32",
 };
 
+// Réglages IA transmis à l'app en variables (la clé AI_API_KEY passe par les secrets)
+const AI_VARS = ["AI_PROVIDER", "AI_BASE_URL", "AI_MODEL", "AI_EMBEDDING_MODEL", "AI_GATEWAY_ID", "AI_AUTO_DAILY_LIMIT"];
+
+/** Fournisseur IA choisi dans .env (null = IA désactivée) */
+function readAiProvider() {
+  const kind = (env.AI_PROVIDER || "").trim().toLowerCase();
+  if (!kind || kind === "none" || kind === "off") return null;
+  if (kind === "cloudflare") return "workers-ai";
+  if (!["workers-ai", "openai", "mistral", "openai-compatible"].includes(kind)) {
+    fail("AI_PROVIDER : workers-ai, openai, mistral ou openai-compatible");
+  }
+  if ((kind === "openai" || kind === "mistral") && !env.AI_API_KEY?.trim()) fail(`AI_PROVIDER=${kind} demande AI_API_KEY`);
+  if (kind === "openai-compatible" && (!env.AI_BASE_URL?.trim() || !env.AI_MODEL?.trim())) {
+    fail("AI_PROVIDER=openai-compatible demande AI_BASE_URL et AI_MODEL");
+  }
+  return kind;
+}
+
 function readConfig() {
   const missing = Object.keys(required).filter((k) => !env[k]?.trim());
   if (missing.length) {
@@ -97,6 +115,7 @@ function readConfig() {
     database: project,
     forwardTo: env.FORWARD_TO?.trim() || "",
     catchAll: /^(1|true|yes|oui)$/i.test(env.CATCH_ALL ?? ""),
+    ai: readAiProvider(),
   };
 }
 
@@ -295,6 +314,7 @@ async function main() {
   const inboxUrl = `https://${config.inboxName}.${subdomain}.workers.dev`;
   const appUrl = `https://${config.hostname}`;
   ok(`Application : ${appUrl}`);
+  ok(config.ai ? `IA : ${config.ai}` : "IA désactivée (AI_PROVIDER non défini)");
   ok(`Réception : ${inboxUrl}`);
 
   const state = loadState();
@@ -316,6 +336,8 @@ async function main() {
           assets: { directory: "./public" },
           kv_namespaces: [{ binding: "INBOX", id: kvId }],
           vars: { APP_HOOK_URL: `${appUrl}/api/inbox/hook`, ...(config.forwardTo ? { FORWARD_TO: config.forwardTo } : {}) },
+          // Résumé quotidien IA : l'app est sollicitée chaque heure et n'envoie qu'à l'heure choisie
+          ...(config.ai ? { triggers: { crons: ["0 * * * *"] } } : { triggers: { crons: [] } }),
           observability: { enabled: true },
         },
         null,
@@ -346,6 +368,8 @@ async function main() {
       r2_buckets: [{ binding: "FILES", bucket_name: config.bucket }],
       d1_databases: [{ binding: "DB", database_name: config.database, database_id: databaseId, migrations_dir: "migrations" }],
       images: { binding: "IMAGES" },
+      // Workers AI : seulement si AI_PROVIDER=workers-ai
+      ...(config.ai === "workers-ai" ? { ai: { binding: "AI" } } : {}),
       observability: { enabled: true },
       // Cloudflare crée l'enregistrement DNS et le certificat de ce sous-domaine
       routes: [{ pattern: config.hostname, custom_domain: true }],
@@ -357,6 +381,7 @@ async function main() {
         INBOX_WORKER_URL: inboxUrl,
         INBOX_WORKER_NAME: config.inboxName,
         ...(env.BRAND_ASSETS_URL ? { BRAND_ASSETS_URL: env.BRAND_ASSETS_URL } : {}),
+        ...Object.fromEntries(AI_VARS.filter((k) => env[k]?.trim()).map((k) => [k, env[k].trim()])),
       },
     };
     writeFileSync("wrangler.deploy.jsonc", JSON.stringify(wranglerConfig, null, 2) + "\n");
@@ -380,6 +405,7 @@ async function main() {
       APP_PASSWORD: env.APP_PASSWORD,
       SESSION_SECRET: env.SESSION_SECRET,
       INBOX_SECRET: state.inboxSecret,
+      AI_API_KEY: env.AI_API_KEY,
     };
     withSecretsFile(secrets, (file) =>
       run("npx", ["opennextjs-cloudflare", "deploy", "--config", "wrangler.deploy.jsonc", "--secrets-file", file], wranglerEnv),

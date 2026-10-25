@@ -1,4 +1,5 @@
 import { collectUnusedAttachments } from "@/lib/attachments";
+import { database } from "@/lib/db";
 import { HttpError, handler, readJson, summarize } from "@/lib/server";
 import { canSeeMessage, currentUser } from "@/lib/session";
 import { messages } from "@/lib/store";
@@ -47,6 +48,7 @@ export const DELETE = handler(async (_req: Request, { params }: Ctx) => {
     throw new HttpError(400, "Placez d'abord le message dans la corbeille");
   }
   await messages.remove(id);
+  await (await database()).prepare("DELETE FROM message_embeddings WHERE id = ?").bind(id).run();
   await collectUnusedAttachments();
   return Response.json({ ok: true });
 });

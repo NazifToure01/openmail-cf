@@ -1,6 +1,8 @@
 import "server-only";
+import { after } from "next/server";
 import PostalMime from "postal-mime";
 import sanitizeHtml from "sanitize-html";
+import { processIncoming } from "./ai-mail";
 import { storeAttachment } from "./attachments";
 import { DuplicateError } from "./db";
 import { messages } from "./store";
@@ -59,6 +61,8 @@ async function runSync(): Promise<number> {
     }
     if (!more || pending.length === 0) break;
   }
+  // Tri et indexation par l'IA (si activés), après la réponse pour ne pas retarder l'import
+  if (imported.length) after(() => processIncoming(imported));
   return imported.length;
 }
 

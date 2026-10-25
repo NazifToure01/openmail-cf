@@ -26,6 +26,7 @@ import {
   Quote,
   Redo2,
   RemoveFormatting,
+  Sparkles,
   Strikethrough,
   Trash2,
   Underline,
@@ -34,6 +35,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BRAND_ASSETS, brandIconUrl } from "@/lib/brand";
+import { AiWriteDialog, useAiFeature, type AiWriteContext } from "./ai";
 import { AppIcon, useBrandAssetsUrl, useBranding } from "./brand";
 import { api, uploadImage } from "@/lib/api";
 import type { LibraryImage } from "@/lib/types";
@@ -66,6 +68,7 @@ export function RichEditor({
   onReady,
   footer,
   className,
+  aiContext,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -75,6 +78,8 @@ export function RichEditor({
   onReady?: (editor: Editor) => void;
   footer?: ReactNode;
   className?: string;
+  /** Contexte transmis à l'assistant de rédaction IA (objet, message auquel on répond) */
+  aiContext?: AiWriteContext;
 }) {
   const toast = useToast();
   const onChangeRef = useRef(onChange);
@@ -140,7 +145,7 @@ export function RichEditor({
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
       {/* Monté seulement quand l'éditeur existe : useEditorState ne suit pas un passage de null à une instance */}
-      {editor ? <Toolbar editor={editor} /> : <div className="h-10 border-b border-line" />}
+      {editor ? <Toolbar editor={editor} aiContext={aiContext} /> : <div className="h-10 border-b border-line" />}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <EditorContent editor={editor} />
         {footer}
@@ -149,7 +154,9 @@ export function RichEditor({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, aiContext }: { editor: Editor; aiContext?: AiWriteContext }) {
+  const [aiOpen, setAiOpen] = useState(false);
+  const canWrite = useAiFeature("compose");
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -192,6 +199,14 @@ function Toolbar({ editor }: { editor: Editor }) {
           if ((e.target as HTMLElement).closest("button")) e.preventDefault();
         }}
       >
+        {canWrite && (
+          <>
+            <IconButton label="Assistant de rédaction (IA)" onClick={() => setAiOpen(true)} className="text-accent">
+              <Sparkles size={16} />
+            </IconButton>
+            <Sep />
+          </>
+        )}
         <IconButton label="Annuler (⌘Z)" onClick={() => chain().undo().run()} disabled={!s.canUndo}>
           <Undo2 size={16} />
         </IconButton>
@@ -312,6 +327,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       {linkOpen && <LinkDialog editor={editor} onClose={() => setLinkOpen(false)} />}
       {imageOpen && <ImageDialog editor={editor} onClose={() => setImageOpen(false)} />}
       {brandOpen && <BrandDialog editor={editor} onClose={() => setBrandOpen(false)} />}
+      {aiOpen && <AiWriteDialog editor={editor} context={aiContext} onClose={() => setAiOpen(false)} />}
       {palette && <div className="fixed inset-0 z-10" onMouseDown={() => setPalette(null)} />}
     </>
   );

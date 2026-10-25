@@ -1,3 +1,6 @@
+import { after } from "next/server";
+import { featureEnabled } from "@/lib/ai";
+import { indexMessages } from "@/lib/ai-mail";
 import { findAttachments } from "@/lib/attachments";
 import { attachmentKey, getFile } from "@/lib/files";
 import { messages, signatures } from "@/lib/store";
@@ -109,5 +112,9 @@ export const POST = handler(async (request: Request) => {
   await messages.insert(message);
   if (input.draftId) await messages.remove(input.draftId, "folder = 'drafts'");
   await rememberContacts([...input.to, ...input.cc, ...input.bcc]);
+  // Recherche par le sens : les messages envoyés sont indexés aussi
+  after(async () => {
+    if (await featureEnabled("search")) await indexMessages([message]).catch((err) => console.error("Indexation IA impossible", (err as Error).message));
+  });
   return Response.json({ message: summarize(message) });
 });
